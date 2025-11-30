@@ -26,7 +26,7 @@ public class CsvUtils {
                     first = false;
                     continue;
                 }
-                rows.add(line.split(",")); // tus CSV usan TAB
+                rows.add(line.split(","));
             }
         }
 

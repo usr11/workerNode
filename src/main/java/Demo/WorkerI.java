@@ -1,36 +1,20 @@
 package Demo;
 
 import com.zeroc.Ice.Current;
+import org.example.engine.ProcessingEngine; // Importar el motor real
 
 public class WorkerI implements Demo.Worker {
 
-    // ANTES: public TaskResult executeTask(String taskData, Current current)
-    // AHORA: Debes usar el nombre y los argumentos nuevos definidos en el .ice
+    private final ProcessingEngine engine = new ProcessingEngine(); // Instancia del motor
+
     @Override
     public TaskResult processDatagramLog(String filePath, long startOffset, long endOffset, Current current) {
 
         System.out.println("Recibida tarea: " + filePath);
         System.out.println("Rango de bytes: " + startOffset + " -> " + endOffset);
 
-        long start = System.currentTimeMillis();
-
-        // --- AQUÍ IRÁ TU LÓGICA DE PROCESAMIENTO ---
-        // (Por ahora dejamos la simulación para que veas que compila)
-        double result = 0;
-        try {
-            Thread.sleep(500);
-            result = Math.random() * 100;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        // --- CORRECCIÓN: Invocar el motor de procesamiento real ---
+        return engine.processDatagramLog(filePath, startOffset, endOffset, current);
         // -------------------------------------------
-
-        long time = System.currentTimeMillis() - start;
-
-        // Obtenemos nombre de usuario de forma segura
-        String workerName = System.getProperty("user.name");
-        if (workerName == null) workerName = "Unknown";
-
-        return new TaskResult(result, workerName, time);
     }
 }

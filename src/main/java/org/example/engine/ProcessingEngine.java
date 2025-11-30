@@ -3,17 +3,13 @@ package org.example.engine;
 import Demo.TaskResult;
 import Demo.Worker;
 import com.zeroc.Ice.Current;
-import org.example.model.Datagram; // Asegúrate de que tu clase se llame así
+import org.example.model.Datagram;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 public class ProcessingEngine implements Worker {
 
-    /**
-     * Implementación del contrato definido en Compute.ice
-     * Ahora aceptamos filePath + startOffset + endOffset
-     */
     @Override
     public TaskResult processDatagramLog(String filePath, long startOffset, long endOffset, Current current) {
 
@@ -23,44 +19,53 @@ public class ProcessingEngine implements Worker {
 
         long start = System.currentTimeMillis();
 
-        // 1. Crear la Cola (CalculationQueue)
-        // Usamos ArrayBlockingQueue con capacidad limitada para manejar la contrapresión
-        BlockingQueue<Datagram> queue = new ArrayBlockingQueue<>(5000);
+        // 1. Crear la Cola (Producer-Consumer Pattern)
+        // AJUSTE: Reducir capacidad para evitar overhead de memoria
+        BlockingQueue<Datagram> queue = new ArrayBlockingQueue<>(1000);
 
-        // 2. Instanciar Componentes Internos
-        // NOTA: Por ahora el Reader lee todo el archivo.
-        // En una fase futura de optimización, le pasaremos startOffset y endOffset al Reader.
+        // 2. Instanciar Componentes
         DatagramReader reader = new DatagramReader(filePath, startOffset, endOffset, queue);
-
         SpeedCalculator calculator = new SpeedCalculator(queue);
 
-        // 3. Ejecutar Hilos
+        // 3. CRÍTICO: Iniciar Calculator PRIMERO (Consumer antes que Producer)
+        Thread tCalc = new Thread(calculator, "Calculator-Thread");
         Thread tReader = new Thread(reader, "Reader-Thread");
-        Thread tCalc = new Thread(calculator, "Calc-Thread");
 
-        tReader.start();
+        // ✅ ORDEN CORRECTO: Consumer primero
         tCalc.start();
+        tReader.start();
 
         try {
-            // Esperamos a que terminen (Barrier)
+            // ✅ Esperar a AMBOS sin importar el orden
+            // No hay dependencia: ambos corren en paralelo
             tReader.join();
             tCalc.join();
+
+            System.out.println("[Engine] Ambos hilos terminaron correctamente.");
+
         } catch (InterruptedException e) {
+            System.err.println("[Engine] Interrupción detectada.");
             e.printStackTrace();
+            // Propagar la interrupción
+            Thread.currentThread().interrupt();
         }
 
         long time = System.currentTimeMillis() - start;
-        System.out.println("<-- [Engine] Tarea finalizada. Matched: " + calculator.matched.get());
 
-        // 4. Retornar Resultado al Master
-        // Calculamos porcentaje de éxito (Matched / Processed)
-        double successRate = 0.0;
+        // 4. Calcular métricas
         int processed = calculator.processed.get();
+        int matched = calculator.matched.get();
+
+        System.out.println("<-- [Engine] Tarea finalizada.");
+        System.out.println("    Datagramas procesados: " + processed);
+        System.out.println("    Datagramas matched: " + matched);
+        System.out.println("    Tiempo: " + time + " ms");
+
+        double successRate = 0.0;
         if (processed > 0) {
-            successRate = ((double) calculator.matched.get() / processed) * 100.0;
+            successRate = ((double) matched / processed) * 100.0;
         }
 
-        // Obtenemos nombre de usuario de forma segura
         String workerName = System.getProperty("user.name");
         if (workerName == null) workerName = "Unknown";
 
