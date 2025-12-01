@@ -24,47 +24,47 @@ public class DatagramReader implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("[Reader] === INICIANDO LECTURA ===");
-        System.out.println("[Reader] Archivo: " + filePath);
-        System.out.println("[Reader] Rango: " + startOffset + " - " + endOffset);
+        System.out.println("[Reader] ─── Iniciando lectura de archivo ───");
+        System.out.println("[Reader] Rango: [" + String.format("%,d", startOffset) +
+                " - " + String.format("%,d", endOffset) + "]");
 
-        // ✅ VALIDACIÓN: Verificar que el archivo existe
+        // Validación del archivo
         File file = new File(filePath);
         if (!file.exists()) {
-            System.err.println("[Reader] ERROR: Archivo no encontrado: " + filePath);
-            System.err.println("[Reader] Ruta absoluta intentada: " + file.getAbsolutePath());
+            System.err.println("[Reader] ✗ ERROR: Archivo no encontrado: " + filePath);
+            System.err.println("[Reader]   Ruta absoluta: " + file.getAbsolutePath());
             sendPoisonPillAndExit();
             return;
         }
 
         if (!file.canRead()) {
-            System.err.println("[Reader] ERROR: Sin permisos de lectura: " + filePath);
+            System.err.println("[Reader] ✗ ERROR: Sin permisos de lectura");
             sendPoisonPillAndExit();
             return;
         }
 
-        System.out.println("[Reader] Archivo validado. Tamaño total: " + file.length() + " bytes");
+        System.out.println("[Reader] ✓ Archivo validado (" +
+                String.format("%.2f MB total)", file.length() / 1024.0 / 1024.0));
 
         int linesRead = 0;
         int linesSkipped = 0;
+        long readStartTime = System.currentTimeMillis();
 
         try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
 
-            // 1. Posicionarse en el offset inicial
+            // Posicionarse en el offset
             raf.seek(startOffset);
-            System.out.println("[Reader] Seek a posición: " + startOffset);
 
-            // 2. Ajuste de bordes
+            // Ajuste de bordes (descartar línea parcial si no estamos al inicio)
             if (startOffset > 0) {
-                String discarded = raf.readLine();
-                System.out.println("[Reader] Línea parcial descartada (border adjustment)");
+                raf.readLine();
             }
 
-            System.out.println("[Reader] Comenzando lectura de líneas...");
+            System.out.println("[Reader] ─── Leyendo líneas del CSV ───");
 
-            // 3. Leer líneas
             String line;
-            long lastReportedPosition = raf.getFilePointer();
+            long lastReport = System.currentTimeMillis();
+            int lastCount = 0;
 
             while (raf.getFilePointer() < endOffset && (line = raf.readLine()) != null) {
 
@@ -75,18 +75,23 @@ public class DatagramReader implements Runnable {
 
                 try {
                     Datagram d = new Datagram(line);
-                    queue.put(d); // Bloqueante
+                    queue.put(d);
                     linesRead++;
 
-                    // Reporte de progreso
-                    if (linesRead % 1000 == 0) {
-                        long currentPos = raf.getFilePointer();
-                        long bytesRead = currentPos - lastReportedPosition;
+                    // Reporte cada 2 segundos
+                    long now = System.currentTimeMillis();
+                    if (now - lastReport >= 2000) {
+                        int rate = (int) ((linesRead - lastCount) / 2.0);
+                        double progress = ((raf.getFilePointer() - startOffset) * 100.0) /
+                                (endOffset - startOffset);
+
                         System.out.println(String.format(
-                                "[Reader] Leídas %,d líneas | Pos: %,d | +%,d bytes | Cola: %d",
-                                linesRead, currentPos, bytesRead, queue.size()
+                                "[Reader] Progreso: %5.1f%% | Leídas: %,7d | Rate: %,5d/s | Cola: %d",
+                                progress, linesRead, rate, queue.size()
                         ));
-                        lastReportedPosition = currentPos;
+
+                        lastReport = now;
+                        lastCount = linesRead;
                     }
 
                 } catch (IllegalArgumentException e) {
@@ -94,14 +99,18 @@ public class DatagramReader implements Runnable {
                 }
             }
 
-            System.out.println("[Reader] === LECTURA COMPLETADA ===");
-            System.out.println("[Reader] Líneas válidas: " + linesRead);
-            System.out.println("[Reader] Líneas inválidas: " + linesSkipped);
-            System.out.println("[Reader] Posición final: " + raf.getFilePointer());
+            long readTime = System.currentTimeMillis() - readStartTime;
+
+            System.out.println("[Reader] ─────────────────────────────────");
+            System.out.println("[Reader] ✓ Lectura completada");
+            System.out.println("[Reader]   Líneas válidas:   " + String.format("%,d", linesRead));
+            System.out.println("[Reader]   Líneas inválidas: " + String.format("%,d", linesSkipped));
+            System.out.println("[Reader]   Tiempo lectura:   " + readTime + " ms");
+            System.out.println("[Reader]   Rate promedio:    " + String.format("%,d", linesRead * 1000 / readTime) + " líneas/s");
+            System.out.println("[Reader] ─────────────────────────────────");
 
         } catch (Exception e) {
-            System.err.println("[Reader] *** ERROR DE I/O ***");
-            System.err.println("[Reader] Mensaje: " + e.getMessage());
+            System.err.println("[Reader] ✗ ERROR DE I/O: " + e.getMessage());
             e.printStackTrace();
         } finally {
             sendPoisonPillAndExit();
@@ -110,11 +119,10 @@ public class DatagramReader implements Runnable {
 
     private void sendPoisonPillAndExit() {
         try {
-            System.out.println("[Reader] Enviando POISON_PILL...");
             queue.put(POISON_PILL);
-            System.out.println("[Reader] POISON_PILL enviada. Hilo finalizado.");
+            System.out.println("[Reader] ✓ POISON_PILL enviada. Finalizando Reader.");
         } catch (InterruptedException e) {
-            System.err.println("[Reader] Interrumpido al enviar POISON_PILL");
+            System.err.println("[Reader] ✗ Interrumpido al enviar POISON_PILL");
             Thread.currentThread().interrupt();
         }
     }

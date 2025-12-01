@@ -1,1 +1,1 @@
-WorkerAdapter.Endpoints=tcp -h 10.147.17.107 -p 10000
+WorkerAdapter.Endpoints=tcp -p 10000
