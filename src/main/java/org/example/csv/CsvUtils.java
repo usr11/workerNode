@@ -22,7 +22,7 @@ public class CsvUtils {
             boolean first = true;
 
             while ((line = reader.readLine()) != null) {
-                if (first) { // skip header
+                if (first) {
                     first = false;
                     continue;
                 }

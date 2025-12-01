@@ -13,14 +13,14 @@ public class LineStopLoader {
 
         for (String[] r : rows) {
             LineStop ls = new LineStop(
-                    Integer.parseInt(r[0]), // LINESTOPID
-                    Integer.parseInt(r[1]), // STOPSEQUENCE
-                    Integer.parseInt(r[2]), // ORIENTATION
-                    Integer.parseInt(r[3]), // LINEID
-                    Integer.parseInt(r[4]), // STOPID
-                    Integer.parseInt(r[5]), // PLANVERSIONID
-                    Integer.parseInt(r[6]), // LINEVARIANT
-                    Integer.parseInt(r[8])  // LINEVARIANTTYPE
+                    Integer.parseInt(r[0]),
+                    Integer.parseInt(r[1]),
+                    Integer.parseInt(r[2]),
+                    Integer.parseInt(r[3]),
+                    Integer.parseInt(r[4]),
+                    Integer.parseInt(r[5]),
+                    Integer.parseInt(r[6]),
+                    Integer.parseInt(r[8])
             );
             list.add(ls);
         }

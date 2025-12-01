@@ -16,18 +16,15 @@ public class SpeedCalculator implements Runnable {
     private final BlockingQueue<Datagram> queue;
     private final JGraphT_Topology topology;
 
-    // Contadores
     public final AtomicInteger processed = new AtomicInteger(0);
     public final AtomicInteger matched = new AtomicInteger(0);
     public final AtomicInteger invalidCoords = new AtomicInteger(0);
     public final AtomicInteger validButNoMatch = new AtomicInteger(0);
     public final AtomicInteger speedCalculated = new AtomicInteger(0);
 
-    // Estructura para cálculo de velocidades por arco
-    // Key: "lineId-orientation-variant", Value: {totalSpeed, count}
+    // Calculo de velocidades por arco
     private final Map<String, SpeedStats> archSpeedMap = new HashMap<>();
 
-    // Memoria de última posición por bus (para calcular delta)
     private final Map<Integer, Datagram> lastPositionByBus = new HashMap<>();
 
     public SpeedCalculator(BlockingQueue<Datagram> queue) {
@@ -53,20 +50,19 @@ public class SpeedCalculator implements Runnable {
                 }
 
                 try {
-                    // Validar coordenadas
+                    // validar coordenadas
                     if (!d.hasValidCoordinates()) {
                         invalidCoords.incrementAndGet();
                         processed.incrementAndGet();
                         continue;
                     }
 
-                    // Buscar arco más cercano
                     Arch arco = topology.findNearestArch(d.getLatitud(), d.getLongitud());
 
                     if (arco != null) {
                         matched.incrementAndGet();
 
-                        // ✅ CÁLCULO DE VELOCIDAD
+                        // calcular velocidad
                         calculateSpeed(d, arco);
 
                     } else {
@@ -75,7 +71,6 @@ public class SpeedCalculator implements Runnable {
 
                     int total = processed.incrementAndGet();
 
-                    // Reporte cada segundo
                     long now = System.currentTimeMillis();
                     if (now - lastReport >= 1000) {
                         int rate = total - lastProcessed;
@@ -113,13 +108,11 @@ public class SpeedCalculator implements Runnable {
         }
     }
 
-    /**
-     * Calcula la velocidad del bus en el arco usando la última posición conocida
-     */
+
+    // Calcula la velocidad del bus en el arco usando la última posición conocida
     private void calculateSpeed(Datagram current, Arch arco) {
         int busId = current.getBusId();
 
-        // Obtener última posición de este bus
         Datagram prev = lastPositionByBus.get(busId);
 
         if (prev != null) {
@@ -127,31 +120,27 @@ public class SpeedCalculator implements Runnable {
             Duration delta = Duration.between(prev.getTimestamp(), current.getTimestamp());
             long seconds = delta.getSeconds();
 
-            // Solo calcular si hay movimiento razonable (entre 1 seg y 5 min)
             if (seconds > 0 && seconds < 300) {
 
-                // Calcular distancia recorrida (en metros)
                 double distance = GeoUtils.haversine(
                         prev.getLatitud(), prev.getLongitud(),
                         current.getLatitud(), current.getLongitud()
                 );
 
-                // Velocidad en km/h
+                // velocidad en km/h
                 double speedKmh = (distance / seconds) * 3.6;
 
-                // Filtrar velocidades absurdas (0-120 km/h es razonable para buses)
+                // filtrar velocidades
                 if (speedKmh > 0 && speedKmh < 120) {
                     String archKey = arco.getLineId() + "-" +
                             arco.getOrientation() + "-" +
                             arco.getLineVariant();
 
-                    // Agregar a estadísticas del arco
                     archSpeedMap.computeIfAbsent(archKey, k -> new SpeedStats())
                             .addSpeed(speedKmh);
 
                     speedCalculated.incrementAndGet();
 
-                    // Debug: Mostrar primeras 3 velocidades calculadas
                     if (speedCalculated.get() <= 3) {
                         System.out.println(String.format(
                                 "[Calculator] DEBUG Speed #%d: Bus %d, Arco %s, %.2f km/h (dist: %.0fm, tiempo: %ds)",
@@ -162,7 +151,6 @@ public class SpeedCalculator implements Runnable {
             }
         }
 
-        // Actualizar última posición
         lastPositionByBus.put(busId, current);
     }
 
@@ -184,9 +172,9 @@ public class SpeedCalculator implements Runnable {
         System.out.println("[Calculator] Total de arcos únicos:    " + archSpeedMap.size());
 
         if (!archSpeedMap.isEmpty()) {
-            // Top 5 arcos más transitados
             System.out.println("[Calculator] ");
             System.out.println("[Calculator] Top 5 arcos más transitados:");
+            System.out.println("[Calculator] lineId-orientation-variant");
             archSpeedMap.entrySet().stream()
                     .sorted((a, b) -> Integer.compare(b.getValue().getCount(), a.getValue().getCount()))
                     .limit(5)
@@ -198,7 +186,6 @@ public class SpeedCalculator implements Runnable {
                         ));
                     });
 
-            // Velocidad promedio global
             double globalAvg = archSpeedMap.values().stream()
                     .mapToDouble(SpeedStats::getAverage)
                     .average()
@@ -211,7 +198,7 @@ public class SpeedCalculator implements Runnable {
             ));
         } else {
             System.out.println("[Calculator] ");
-            System.out.println("[Calculator] ⚠️  No se calcularon velocidades.");
+            System.out.println("[Calculator]     No se calcularon velocidades.");
             System.out.println("[Calculator]     Posibles causas:");
             System.out.println("[Calculator]     - Datagramas muy dispersos en tiempo");
             System.out.println("[Calculator]     - Pocos buses con múltiples posiciones");
@@ -221,16 +208,13 @@ public class SpeedCalculator implements Runnable {
         System.out.println("[Calculator] ═══════════════════════════════════════════════\n");
     }
 
-    /**
-     * Método público para obtener resultados de velocidades (usado por Engine)
-     */
+
+    // Obtener resultados de velocidades
+
     public Map<String, SpeedStats> getArchSpeedMap() {
         return archSpeedMap;
     }
 
-    /**
-     * Clase interna para almacenar estadísticas de velocidad
-     */
     public static class SpeedStats {
         private double totalSpeed = 0;
         private int count = 0;

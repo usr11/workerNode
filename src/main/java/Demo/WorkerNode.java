@@ -8,7 +8,6 @@ import java.net.InetAddress;
 public class WorkerNode {
     public static void main(String[] args) {
 
-        // Banner informativo
         printBanner();
 
         try(Communicator communicator = Util.initialize(args, "config.worker")) {
@@ -19,7 +18,6 @@ public class WorkerNode {
             adapter.add(workerImpl, Util.stringToIdentity("SimpleWorker"));
             adapter.activate();
 
-            // Información del nodo
             String hostName = getHostInfo();
             String endpoint = adapter.getEndpoints()[0].toString();
 

@@ -5,7 +5,7 @@ import org.example.engine.ProcessingEngine; // Importar el motor real
 
 public class WorkerI implements Demo.Worker {
 
-    private final ProcessingEngine engine = new ProcessingEngine(); // Instancia del motor
+    private final ProcessingEngine engine = new ProcessingEngine();
 
     @Override
     public TaskResult processDatagramLog(String filePath, long startOffset, long endOffset, Current current) {
@@ -13,8 +13,6 @@ public class WorkerI implements Demo.Worker {
         System.out.println("Recibida tarea: " + filePath);
         System.out.println("Rango de bytes: " + startOffset + " -> " + endOffset);
 
-        // --- CORRECCIÓN: Invocar el motor de procesamiento real ---
         return engine.processDatagramLog(filePath, startOffset, endOffset, current);
-        // -------------------------------------------
     }
 }

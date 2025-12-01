@@ -25,14 +25,11 @@ public class ProcessingEngine implements Worker {
 
         long start = System.currentTimeMillis();
 
-        // Cola de comunicación Producer-Consumer
         BlockingQueue<Datagram> queue = new ArrayBlockingQueue<>(1000);
 
-        // Componentes del pipeline
         DatagramReader reader = new DatagramReader(filePath, startOffset, endOffset, queue);
         SpeedCalculator calculator = new SpeedCalculator(queue);
 
-        // Iniciar hilos (Consumer primero para evitar deadlock)
         Thread tCalc = new Thread(calculator, "Calculator-Thread");
         Thread tReader = new Thread(reader, "Reader-Thread");
 
@@ -51,12 +48,11 @@ public class ProcessingEngine implements Worker {
 
         long time = System.currentTimeMillis() - start;
 
-        // Recolectar métricas
         int processed = calculator.processed.get();
         int matched = calculator.matched.get();
         int speedCalc = calculator.speedCalculated.get();
 
-        // Calcular velocidad promedio de ESTE chunk
+        // Calcular velocidad promedio por chunk
         double avgSpeed = 0.0;
         if (!calculator.getArchSpeedMap().isEmpty()) {
             avgSpeed = calculator.getArchSpeedMap().values().stream()
@@ -65,7 +61,6 @@ public class ProcessingEngine implements Worker {
                     .orElse(0.0);
         }
 
-        // Obtener Top 5 arcos para enviar al Master
         Demo.ArchSpeed[] topArches = calculator.getArchSpeedMap().entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue().getCount(), a.getValue().getCount()))
                 .limit(5)
@@ -76,7 +71,6 @@ public class ProcessingEngine implements Worker {
                 ))
                 .toArray(Demo.ArchSpeed[]::new);
 
-        // Resumen final del chunk
         System.out.println("\n╔═══════════════════════════════════════════════════════════╗");
         System.out.println("║              TAREA COMPLETADA - RESUMEN                   ║");
         System.out.println("╠═══════════════════════════════════════════════════════════╣");
@@ -93,20 +87,19 @@ public class ProcessingEngine implements Worker {
         System.out.println("╚═══════════════════════════════════════════════════════════╝");
         System.out.println();
 
-        // Calcular tasa de éxito
         double successRate = processed > 0 ? (matched * 100.0 / processed) : 0.0;
 
         String workerName = System.getProperty("user.name");
         if (workerName == null) workerName = "Unknown";
 
-        // ✅ Retornar TaskResult con velocidades incluidas
+        // TaskResult con velocidades
         return new TaskResult(
-                successRate,      // value (match rate)
-                workerName,       // workerName
-                time,             // executionTime
-                avgSpeed,         // globalAvgSpeed
-                speedCalc,        // speedCount
-                topArches         // topArches
+                successRate,
+                workerName,
+                time,
+                avgSpeed,
+                speedCalc,
+                topArches
         );
     }
 }

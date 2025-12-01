@@ -29,13 +29,10 @@ public class GraphPrinter {
                     .add(edge);
         }
 
-        // imprimir datos agrupados
         for (String key : byLine.keySet()) {
 
             List<Arch> edges = byLine.get(key);
 
-
-            // extraer datos de la linea
             Arch sample = edges.get(0);
 
 

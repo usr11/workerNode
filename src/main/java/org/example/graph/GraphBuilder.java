@@ -18,14 +18,12 @@ public class GraphBuilder {
                 new DirectedWeightedMultigraph<>(Arch.class);
 
 
-        // --- INDEXAR STOPS POR STOPID ---
         Map<Integer, Stop> stopMap = new HashMap<>();
         for (Stop s : stops) {
             stopMap.put(s.getStopId(), s);
             graph.addVertex(s);
         }
 
-        // --- AGRUPAR LineStop POR LINEA, ORIENTATION y VARIANTE ---
         Map<String, List<LineStop>> lines = new HashMap<>();
 
         for (LineStop ls : lineStops) {
@@ -33,13 +31,11 @@ public class GraphBuilder {
             lines.computeIfAbsent(key, k -> new ArrayList<>()).add(ls);
         }
 
-        // --- ORDENAR POR STOPSEQUENCE y CREAR ARCOS ---
         for (Map.Entry<String, List<LineStop>> entry : lines.entrySet()) {
 
             List<LineStop> list = entry.getValue();
             list.sort(Comparator.comparingInt(LineStop::getStopSequence));
 
-            // Extraer info de la línea
             LineStop first = list.get(0);
             int lineId = first.getLineId();
             int orientation = first.getOrientation();

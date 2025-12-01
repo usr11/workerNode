@@ -1,9 +1,9 @@
 package org.example.logic;
 
 public class GeoUtils {
-    private static final double R = 6371e3; // Radio tierra en metros
+    private static final double R = 6371e3;
 
-    // Fórmula Haversine para distancia entre dos puntos
+
     public static double haversine(double lat1, double lon1, double lat2, double lon2) {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);

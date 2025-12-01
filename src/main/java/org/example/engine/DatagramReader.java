@@ -28,7 +28,6 @@ public class DatagramReader implements Runnable {
         System.out.println("[Reader] Rango: [" + String.format("%,d", startOffset) +
                 " - " + String.format("%,d", endOffset) + "]");
 
-        // Validación del archivo
         File file = new File(filePath);
         if (!file.exists()) {
             System.err.println("[Reader] ✗ ERROR: Archivo no encontrado: " + filePath);
@@ -52,10 +51,9 @@ public class DatagramReader implements Runnable {
 
         try (RandomAccessFile raf = new RandomAccessFile(filePath, "r")) {
 
-            // Posicionarse en el offset
             raf.seek(startOffset);
 
-            // Ajuste de bordes (descartar línea parcial si no estamos al inicio)
+            // Ajuste de bordes
             if (startOffset > 0) {
                 raf.readLine();
             }
@@ -78,7 +76,7 @@ public class DatagramReader implements Runnable {
                     queue.put(d);
                     linesRead++;
 
-                    // Reporte cada 2 segundos
+                    // reporte
                     long now = System.currentTimeMillis();
                     if (now - lastReport >= 2000) {
                         int rate = (int) ((linesRead - lastCount) / 2.0);
