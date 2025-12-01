@@ -4,8 +4,6 @@ import com.zeroc.Ice.*;
 
 public class WorkerNode {
     public static void main(String[] args) {
-//        String configFile = (args.length > 0) ? args[0] : "config.worker";
-//        try(Communicator communicator = Util.initialize(args, configFile)) {
         try(Communicator communicator = Util.initialize(args, "config.worker")) {
 
             ObjectAdapter adapter = communicator.createObjectAdapter("WorkerAdapter");
@@ -15,7 +13,7 @@ public class WorkerNode {
             adapter.activate();
 
             System.out.println("WorkerNode Listo. Grafo se cargará en la primera petición.");
-//            System.out.println("Worker iniciado con " + configFile);
+
             communicator.waitForShutdown();
         }
     }
